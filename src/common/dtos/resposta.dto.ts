@@ -80,7 +80,12 @@ export class RespostaErroDto {
   })
   path?: string;
 
-  constructor(mensagem: string, codigo?: string, detalhes?: any, path?: string) {
+  constructor(
+    mensagem: string,
+    codigo?: string,
+    detalhes?: any,
+    path?: string,
+  ) {
     this.sucesso = false;
     this.mensagem = mensagem;
     this.codigo = codigo;

@@ -63,13 +63,13 @@ async function bootstrap() {
     .setTitle('API Planos de Saúde')
     .setDescription(
       'API para gerenciamento de planos de saúde (Unimed e HapVida).\n\n' +
-      'Funcionalidades:\n' +
-      '- Importação de dados das operadoras (REST API e CSV)\n' +
-      '- Gestão de colaboradores e dependentes\n' +
-      '- Execução de processos de fechamento e exportação\n' +
-      '- Geração de relatórios gerenciais\n\n' +
-      'Esta API mantém a mesma lógica de negócio do sistema legado,\n' +
-      'modernizando apenas a tecnologia (NestJS + TypeScript + Oracle).'
+        'Funcionalidades:\n' +
+        '- Importação de dados das operadoras (REST API e CSV)\n' +
+        '- Gestão de colaboradores e dependentes\n' +
+        '- Execução de processos de fechamento e exportação\n' +
+        '- Geração de relatórios gerenciais\n\n' +
+        'Esta API mantém a mesma lógica de negócio do sistema legado,\n' +
+        'modernizando apenas a tecnologia (NestJS + TypeScript + Oracle).',
     )
     .setVersion('1.0')
     .addTag('Importação', 'Endpoints para importar dados das operadoras')
@@ -95,7 +95,9 @@ async function bootstrap() {
 
   console.log('========================================');
   console.log(`🚀 Aplicação iniciada em: http://localhost:${port}`);
-  console.log(`📚 Documentação Swagger: http://localhost:${port}/${apiPrefix}/docs`);
+  console.log(
+    `📚 Documentação Swagger: http://localhost:${port}/${apiPrefix}/docs`,
+  );
   console.log(`🔗 Health Check: http://localhost:${port}/${apiPrefix}/health`);
   console.log('========================================');
 }

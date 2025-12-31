@@ -141,6 +141,7 @@ Controller → Service → Repository → Oracle Database
    - Database: Toda a lógica de negócio (procedures/views)
 
 2. **Código Transparente**
+
    ```typescript
    // ✅ BOM - Código transparente
    async getResumoColaborador(mes: number, ano: number) {
@@ -149,7 +150,7 @@ Controller → Service → Repository → Oracle Database
        { mes, ano }
      );
    }
-   
+
    // ❌ EVITAR - Lógica no código
    async calcularValorLiquido(titular, dependentes) {
      return titular + dependentes * 0.5; // NÃO! Isso deve estar no banco
@@ -223,7 +224,7 @@ pnpm run test:cov
 // ✅ BOM - Documentação clara da intenção
 /**
  * Importa dados da Unimed para o mês/ano especificado.
- * 
+ *
  * IMPORTANTE: Esta função apenas chama a API e insere no banco.
  * Todo o processamento de cálculos é feito pela view gc.vw_uni_resumo_colaborador.
  */
@@ -279,6 +280,7 @@ Projeto desenvolvido internamente para modernização do sistema legado.
 
 Proprietary - Todos os direitos reservados.
 $ mau deploy
+
 ```
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
@@ -309,3 +311,4 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```

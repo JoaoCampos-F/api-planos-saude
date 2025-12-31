@@ -10,13 +10,13 @@ import * as oracledb from 'oracledb';
 
 /**
  * Serviço central para gerenciar conexões com Oracle Database.
- * 
+ *
  * Este serviço:
  * - Cria e mantém um pool de conexões
  * - Fornece métodos para executar queries e procedures
  * - Garante fechamento adequado de conexões
  * - Trata erros do Oracle de forma padronizada
- * 
+ *
  * IMPORTANTE: Este é apenas um wrapper sobre oracledb.
  * Toda a lógica de negócio está no banco (procedures, views, functions).
  */
@@ -30,9 +30,9 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try {
       this.logger.log('Inicializando pool de conexões Oracle...');
-      
+
       const dbConfig = this.configService.get('database.oracle');
-      
+
       this.pool = await oracledb.createPool({
         user: dbConfig.user,
         password: dbConfig.password,
@@ -64,12 +64,12 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Executa uma query SELECT e retorna os resultados tipados.
-   * 
+   *
    * @template T - Tipo do objeto retornado
    * @param sql - Query SQL a ser executada
    * @param params - Parâmetros nomeados da query
    * @returns Array de objetos tipados
-   * 
+   *
    * @example
    * ```typescript
    * const colaboradores = await this.oracleService.query<ColaboradorResumo>(
@@ -78,24 +78,24 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
    * );
    * ```
    */
-  async query<T>(
-    sql: string,
-    params: Record<string, any> = {},
-  ): Promise<T[]> {
+  async query<T>(sql: string, params: Record<string, any> = {}): Promise<T[]> {
     const connection = await this.getConnection();
-    
+
     try {
       this.logger.debug(`Executando query: ${sql.substring(0, 100)}...`);
-      
+
       const result = await connection.execute<T>(sql, params, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
       });
 
       this.logger.debug(`Query retornou ${result.rows?.length || 0} registros`);
-      
+
       return (result.rows || []) as T[];
     } catch (error) {
-      this.logger.error(`Erro ao executar query: ${error.message}`, error.stack);
+      this.logger.error(
+        `Erro ao executar query: ${error.message}`,
+        error.stack,
+      );
       throw this.handleOracleError(error);
     } finally {
       await this.releaseConnection(connection);
@@ -104,7 +104,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Executa um único resultado (query que retorna 1 registro).
-   * 
+   *
    * @template T - Tipo do objeto retornado
    * @param sql - Query SQL
    * @param params - Parâmetros nomeados
@@ -120,11 +120,11 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Executa um comando que modifica dados (INSERT, UPDATE, DELETE).
-   * 
+   *
    * @param sql - Comando SQL
    * @param params - Parâmetros nomeados
    * @returns Número de linhas afetadas
-   * 
+   *
    * @example
    * ```typescript
    * await this.oracleService.execute(
@@ -138,20 +138,23 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     params: Record<string, any> = {},
   ): Promise<number> {
     const connection = await this.getConnection();
-    
+
     try {
       this.logger.debug(`Executando comando: ${sql.substring(0, 100)}...`);
-      
+
       const result = await connection.execute(sql, params, {
         autoCommit: true,
       });
 
       const rowsAffected = result.rowsAffected || 0;
       this.logger.debug(`Comando afetou ${rowsAffected} registro(s)`);
-      
+
       return rowsAffected;
     } catch (error) {
-      this.logger.error(`Erro ao executar comando: ${error.message}`, error.stack);
+      this.logger.error(
+        `Erro ao executar comando: ${error.message}`,
+        error.stack,
+      );
       throw this.handleOracleError(error);
     } finally {
       await this.releaseConnection(connection);
@@ -160,13 +163,13 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Chama uma stored procedure do Oracle.
-   * 
+   *
    * IMPORTANTE: As procedures contêm a lógica de negócio.
    * Este método apenas executa a chamada, não reimplementa a lógica.
-   * 
+   *
    * @param procedureName - Nome completo da procedure (schema.package.procedure)
    * @param params - Parâmetros da procedure
-   * 
+   *
    * @example
    * ```typescript
    * // Chama a mesma procedure que o legacy
@@ -181,13 +184,13 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     params: Record<string, any> = {},
   ): Promise<void> {
     const connection = await this.getConnection();
-    
+
     try {
       this.logger.log(`Chamando procedure: ${procedureName}`);
-      
+
       const paramNames = Object.keys(params);
       const paramPlaceholders = paramNames.map((name) => `:${name}`).join(', ');
-      
+
       const sql = paramPlaceholders
         ? `BEGIN ${procedureName}(${paramPlaceholders}); END;`
         : `BEGIN ${procedureName}; END;`;
@@ -211,14 +214,14 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   /**
    * Executa múltiplos comandos em uma transação.
    * Se um falhar, todos são revertidos.
-   * 
+   *
    * @param callback - Função que recebe a conexão para executar comandos
    */
   async transaction<T>(
     callback: (connection: oracledb.Connection) => Promise<T>,
   ): Promise<T> {
     const connection = await this.getConnection();
-    
+
     try {
       this.logger.debug('Iniciando transação');
       const result = await callback(connection);
@@ -251,7 +254,9 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   /**
    * Libera uma conexão de volta para o pool.
    */
-  private async releaseConnection(connection: oracledb.Connection): Promise<void> {
+  private async releaseConnection(
+    connection: oracledb.Connection,
+  ): Promise<void> {
     try {
       if (connection) {
         await connection.close();
@@ -266,21 +271,21 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
    */
   private handleOracleError(error: any): Error {
     const oracleError = error as oracledb.DBError;
-    
+
     // ORA-00001: Constraint violation (unique, primary key, etc.)
     if (oracleError.errorNum === 1) {
       return new InternalServerErrorException(
         'Registro duplicado. Os dados já existem no sistema.',
       );
     }
-    
+
     // ORA-01403: No data found
     if (oracleError.errorNum === 1403) {
       return new InternalServerErrorException(
         'Nenhum dado encontrado para os parâmetros informados.',
       );
     }
-    
+
     // ORA-01422: Exact fetch returns more than requested number of rows
     if (oracleError.errorNum === 1422) {
       return new InternalServerErrorException(
@@ -299,6 +304,8 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Erro desconhecido
-    return new InternalServerErrorException('Erro inesperado no banco de dados');
+    return new InternalServerErrorException(
+      'Erro inesperado no banco de dados',
+    );
   }
 }

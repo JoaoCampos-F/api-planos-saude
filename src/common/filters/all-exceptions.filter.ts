@@ -12,7 +12,7 @@ import { LoggerService } from '../../shared/logger/logger.service';
 /**
  * Filtro global de exceções.
  * Captura todas as exceções e formata em resposta padronizada.
- * 
+ *
  * Trata:
  * - HttpException (erros do NestJS)
  * - Erros do Oracle (via OracleService)
@@ -56,7 +56,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     else if (exception instanceof Error) {
       mensagem = exception.message;
       detalhes = {
-        stack: process.env.APP_ENV === 'development' ? exception.stack : undefined,
+        stack:
+          process.env.APP_ENV === 'development' ? exception.stack : undefined,
       };
     }
 

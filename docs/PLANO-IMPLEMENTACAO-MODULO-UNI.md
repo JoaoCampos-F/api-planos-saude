@@ -396,6 +396,7 @@ src/
 **🎯 Objetivo: Fazer EXATAMENTE o que o legacy faz, mas com tecnologia moderna**
 
 **NÃO vamos:**
+
 - ❌ Alterar stored procedures
 - ❌ Alterar views
 - ❌ Mudar regras de negócio
@@ -403,6 +404,7 @@ src/
 - ❌ Reescrever lógica do banco
 
 **Vamos apenas:**
+
 - ✅ Traduzir PHP → TypeScript/NestJS
 - ✅ Manter mesma sequência de chamadas
 - ✅ Preservar mesma lógica de validação
@@ -412,12 +414,14 @@ src/
 - ✅ Adicionar testes automatizados
 
 **O banco de dados faz o trabalho pesado, a API apenas:**
+
 1. ✅ Valida entrada (mesmas validações do legacy)
 2. ✅ Chama procedures/views do banco (mesmas chamadas)
 3. ✅ Formata resposta (JSON em vez de HTML)
 4. ✅ Trata erros (com logs estruturados)
 
 **Código auto-explicativo:**
+
 ```typescript
 // ❌ EVITAR - Lógica de negócio no app
 async importarUnimed(dados: ImportarUnimedDto) {
@@ -428,24 +432,25 @@ async importarUnimed(dados: ImportarUnimedDto) {
 async importarUnimed(dados: ImportarUnimedDto): Promise<ImportacaoResponse> {
   // Chama a API externa
   const dadosUnimed = await this.unimedApiClient.buscarPorCNPJ(dados);
-  
+
   // Insere no banco (que já faz todas as validações e processamentos)
   await this.oracleDb.execute(
     'INSERT INTO gc.uni_dados_cobranca (...) VALUES (...)'
   );
-  
+
   // Executa a procedure que faz o resumo
   // (toda a lógica está aqui dentro, testada e funcionando há anos)
   await this.oracleDb.callProcedure(
     'gc.PKG_UNI_SAUDE.p_uni_resumo',
     { mes: dados.mes, ano: dados.ano }
   );
-  
+
   return { success: true, registros: dadosUnimed.length };
 }
 ```
 
 **Benefícios:**
+
 - 🔍 **Manutenção fácil**: "Ah, só chama a procedure X"
 - 🐛 **Debug simples**: Problema está no banco ou na API externa
 - 🚀 **Performance**: Lógica otimizada no Oracle
@@ -479,21 +484,21 @@ case 'saveUnimedCnpj':
 async importarPorCNPJ(dto: ImportarUnimedDto): Promise<ImportacaoResponse> {
   // 1. Formata período (mesma lógica)
   const periodo = `${dto.mes.toString().padStart(2, '0')}${dto.ano}`;
-  
+
   // 2. Busca empresas para processar (mesma query)
   const empresas = await this.repository.buscarEmpresasProcessarUnimed();
-  
+
   // 3. Para cada empresa, chama API e insere (mesma lógica)
   for (const empresa of empresas) {
     const dados = await this.unimedApi.buscarPorCNPJ({
       cnpj: empresa.cnpj,
       periodo
     });
-    
+
     // 4. Insere no banco (mesmas colunas, mesma tabela)
     await this.repository.inserirDadosCobranca(dados, dto.mes, dto.ano);
   }
-  
+
   return { success: true, registros: total };
 }
 ```
@@ -525,7 +530,7 @@ async buscarColaboradores(filtros: BuscarColaboradorDto) {
       AND a.ano_ref = :ano
     ORDER BY a.cod_band, a.apelido, a.colaborador
   `;
-  
+
   return this.db.query<ColaboradorResumo>(query, {
     empresa: filtros.empresa || null,
     mes: filtros.mes,
@@ -558,6 +563,7 @@ async executarResumo(mes: number, ano: number): Promise<void> {
 ```
 
 **O que muda:**
+
 - ✅ Sintaxe moderna (TypeScript)
 - ✅ Type-safety
 - ✅ Parametrização segura (SQL injection)
@@ -565,6 +571,7 @@ async executarResumo(mes: number, ano: number): Promise<void> {
 - ✅ Melhor tratamento de erros
 
 **O que NÃO muda:**
+
 - ✅ Mesma procedure
 - ✅ Mesmos parâmetros
 - ✅ Mesma lógica
@@ -577,6 +584,7 @@ async executarResumo(mes: number, ano: number): Promise<void> {
 #### Melhorias Permitidas
 
 **1. Validações de Entrada (Antes de chamar o banco)**
+
 ```typescript
 // ✅ Adicionar validações com class-validator
 export class ImportarUnimedDto {
@@ -596,6 +604,7 @@ export class ImportarUnimedDto {
 ```
 
 **2. Logging Estruturado**
+
 ```typescript
 // ✅ Adicionar logs detalhados
 this.logger.log(`Iniciando importação Unimed - Período: ${mes}/${ano}`);
@@ -610,13 +619,16 @@ try {
 ```
 
 **3. Tratamento de Erros**
+
 ```typescript
 // ✅ Erros mais descritivos
 try {
   await this.db.callProcedure('gc.PKG_UNI_SAUDE.p_uni_resumo', params);
 } catch (error) {
   if (error.message.includes('ORA-01403')) {
-    throw new NotFoundException('Dados não encontrados para o período informado');
+    throw new NotFoundException(
+      'Dados não encontrados para o período informado',
+    );
   }
   if (error.message.includes('ORA-00001')) {
     throw new ConflictException('Dados já importados para este período');
@@ -627,6 +639,7 @@ try {
 ```
 
 **4. Cache (Para Consultas Frequentes)**
+
 ```typescript
 // ✅ Cache de listas estáticas
 @Cacheable({ ttl: 3600 })
@@ -637,6 +650,7 @@ async listarEmpresas(): Promise<Empresa[]> {
 ```
 
 **5. Paginação (Para Listagens Grandes)**
+
 ```typescript
 // ✅ Adicionar paginação
 async buscarColaboradores(
@@ -658,9 +672,10 @@ async buscarColaboradores(
 ```
 
 **6. Documentação Swagger**
+
 ```typescript
 // ✅ Documentar endpoints
-@ApiOperation({ 
+@ApiOperation({
   summary: 'Importar dados da Unimed por CNPJ',
   description: 'Chama a API Unimed e executa a mesma lógica do legacy'
 })
@@ -670,6 +685,7 @@ async buscarColaboradores(
 ```
 
 **7. Retry Logic (Para APIs Externas)**
+
 ```typescript
 // ✅ Retry em caso de falha temporária
 @Retry({ maxAttempts: 3, backoff: 1000 })
@@ -680,6 +696,7 @@ async buscarDadosUnimed(cnpj: string): Promise<any> {
 ```
 
 **8. Validação de Permissões (Mais Granular)**
+
 ```typescript
 // ✅ Guards mais robustos
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -693,6 +710,7 @@ async importar() {
 #### Melhorias NÃO Permitidas
 
 **❌ NÃO fazer:**
+
 - Reescrever cálculos que estão nas procedures
 - Modificar lógica de validação do banco
 - Alterar regras de negócio
@@ -700,6 +718,7 @@ async importar() {
 - Reimplementar aggregations que estão nas views
 
 **Regra de Ouro:**
+
 > "Se o legacy faz assim, fazemos assim. Apenas com código mais limpo e melhor UX."
 
 ---
@@ -768,7 +787,7 @@ export class ColaboradorRepository {
         AND mes_ref = :mes
         AND ano_ref = :ano
     `;
-    
+
     return this.db.query<ColaboradorResumo>(query, filtros);
   }
 
@@ -776,7 +795,7 @@ export class ColaboradorRepository {
   async atualizarExportacao(cpf: string, exporta: 'S' | 'N'): Promise<void> {
     await this.db.execute(
       'UPDATE gc.uni_resumo_colaborador SET exporta = :exporta WHERE codigo_cpf = :cpf',
-      { exporta, cpf }
+      { exporta, cpf },
     );
   }
 }
@@ -988,28 +1007,28 @@ Para ilustrar a abordagem "zero lógica no app", veja um exemplo completo:
  */
 export interface ColaboradorResumo {
   // Identificação
-  codigoCpf: string;        // codigo_cpf no banco
+  codigoCpf: string; // codigo_cpf no banco
   colaborador: string;
   apelido: string;
-  
+
   // Empresa
-  codEmpresa: number;       // cod_empresa
-  codColigada: number;      // codcoligada
-  codFilial: number;        // codfilial
-  codBand: string;          // cod_band
-  
+  codEmpresa: number; // cod_empresa
+  codColigada: number; // codcoligada
+  codFilial: number; // codfilial
+  codBand: string; // cod_band
+
   // Período
-  mesRef: number;           // mes_ref
-  anoRef: number;           // ano_ref
-  
+  mesRef: number; // mes_ref
+  anoRef: number; // ano_ref
+
   // Valores
-  mTitular: string;         // m_titular (formatado como string R$)
-  mDependente: string;      // m_dependente
-  valorConsumo: string;     // valor_consumo
-  percEmpresa: string;      // perc_empresa
-  valorTotal: string;       // valor_total
-  valorLiquido: string;     // valor_liquido
-  
+  mTitular: string; // m_titular (formatado como string R$)
+  mDependente: string; // m_dependente
+  valorConsumo: string; // valor_consumo
+  percEmpresa: string; // perc_empresa
+  valorTotal: string; // valor_total
+  valorLiquido: string; // valor_liquido
+
   // Status
   ativo: 'S' | 'N';
   exporta: 'S' | 'N';
@@ -1036,7 +1055,7 @@ export class ColaboradorRepository {
    * Este método apenas executa a query e retorna os dados.
    */
   async buscarColaboradores(
-    filtros: BuscarColaboradorDto
+    filtros: BuscarColaboradorDto,
   ): Promise<ColaboradorResumo[]> {
     // Query simples - view já traz tudo calculado
     const query = `
@@ -1071,7 +1090,7 @@ export class ColaboradorRepository {
       empresa: filtros.empresa || null,
       mes: filtros.mes,
       ano: filtros.ano,
-      cpf: filtros.cpf || null
+      cpf: filtros.cpf || null,
     });
   }
 
@@ -1083,7 +1102,7 @@ export class ColaboradorRepository {
     cpf: string,
     mes: number,
     ano: number,
-    exporta: 'S' | 'N'
+    exporta: 'S' | 'N',
   ): Promise<void> {
     await this.db.execute(
       `UPDATE gc.uni_resumo_colaborador 
@@ -1091,7 +1110,7 @@ export class ColaboradorRepository {
        WHERE codigo_cpf = :cpf 
          AND mes_ref = :mes 
          AND ano_ref = :ano`,
-      { exporta, cpf, mes, ano }
+      { exporta, cpf, mes, ano },
     );
   }
 }
@@ -1109,20 +1128,18 @@ import { ColaboradorResumo } from '../../interfaces/colaborador-resumo.interface
 
 @Injectable()
 export class ColaboradorService {
-  constructor(
-    private readonly colaboradorRepo: ColaboradorRepository
-  ) {}
+  constructor(private readonly colaboradorRepo: ColaboradorRepository) {}
 
   /**
    * Busca colaboradores com filtros.
    * Este método apenas:
    * 1. Chama o repository (que chama a view do banco)
    * 2. Retorna os dados
-   * 
+   *
    * Toda a lógica de cálculo está na view gc.vw_uni_resumo_colaborador
    */
   async buscarColaboradores(
-    filtros: BuscarColaboradorDto
+    filtros: BuscarColaboradorDto,
   ): Promise<ColaboradorResumo[]> {
     return this.colaboradorRepo.buscarColaboradores(filtros);
   }
@@ -1135,13 +1152,13 @@ export class ColaboradorService {
     cpf: string,
     mes: number,
     ano: number,
-    exporta: 'S' | 'N'
+    exporta: 'S' | 'N',
   ): Promise<{ mensagem: string }> {
     await this.colaboradorRepo.atualizarExportacao(cpf, mes, ano, exporta);
-    
+
     const acao = exporta === 'S' ? 'readicionado' : 'não será enviado';
     return {
-      mensagem: `O valor da Unimed referente ao mês ${mes} foi ${acao} ao Colaborador`
+      mensagem: `O valor da Unimed referente ao mês ${mes} foi ${acao} ao Colaborador`,
     };
   }
 }
@@ -1170,7 +1187,7 @@ export class ColaboradorController {
     return {
       success: true,
       data: dados,
-      total: dados.length
+      total: dados.length,
     };
   }
 
@@ -1178,17 +1195,17 @@ export class ColaboradorController {
   @ApiOperation({ summary: 'Atualizar status de exportação' })
   async atualizarExportacao(
     @Param('cpf') cpf: string,
-    @Body() dto: AtualizarExportacaoDto
+    @Body() dto: AtualizarExportacaoDto,
   ) {
     const resultado = await this.colaboradorService.atualizarExportacao(
       cpf,
       dto.mes,
       dto.ano,
-      dto.exporta
+      dto.exporta,
     );
     return {
       success: true,
-      message: resultado.mensagem
+      message: resultado.mensagem,
     };
   }
 }
@@ -1215,7 +1232,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
       password: this.configService.get('ORACLE_PASSWORD'),
       connectString: this.configService.get('ORACLE_CONNECT_STRING'),
       poolMin: 2,
-      poolMax: 10
+      poolMax: 10,
     });
   }
 
@@ -1226,14 +1243,11 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   /**
    * Executa uma query SELECT e retorna os resultados tipados.
    */
-  async query<T>(
-    sql: string,
-    params: Record<string, any> = {}
-  ): Promise<T[]> {
+  async query<T>(sql: string, params: Record<string, any> = {}): Promise<T[]> {
     const connection = await this.pool.getConnection();
     try {
       const result = await connection.execute(sql, params, {
-        outFormat: oracledb.OUT_FORMAT_OBJECT
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
       });
       return result.rows as T[];
     } finally {
@@ -1244,10 +1258,7 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
   /**
    * Executa um comando (INSERT, UPDATE, DELETE).
    */
-  async execute(
-    sql: string,
-    params: Record<string, any> = {}
-  ): Promise<void> {
+  async execute(sql: string, params: Record<string, any> = {}): Promise<void> {
     const connection = await this.pool.getConnection();
     try {
       await connection.execute(sql, params, { autoCommit: true });
@@ -1261,14 +1272,16 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
    */
   async callProcedure(
     procedureName: string,
-    params: Record<string, any> = {}
+    params: Record<string, any> = {},
   ): Promise<void> {
     const connection = await this.pool.getConnection();
     try {
       await connection.execute(
-        `BEGIN ${procedureName}(${Object.keys(params).map(k => `:${k}`).join(', ')}); END;`,
+        `BEGIN ${procedureName}(${Object.keys(params)
+          .map((k) => `:${k}`)
+          .join(', ')}); END;`,
         params,
-        { autoCommit: true }
+        { autoCommit: true },
       );
     } finally {
       await connection.close();
@@ -1617,7 +1630,7 @@ Request Body:
   "@nestjs/bull": "^10.1.1",
   "class-validator": "^0.14.1",
   "class-transformer": "^0.5.1",
-  "oracledb": "^6.6.0",           // Driver nativo Oracle - SEM ORM
+  "oracledb": "^6.6.0", // Driver nativo Oracle - SEM ORM
   "axios": "^1.7.7",
   "soap": "^1.1.3",
   "multer": "^1.4.5-lts.1",
@@ -1847,6 +1860,7 @@ Request Body:
 ### Princípio: "Tradução Fiel, Não Reimplementação"
 
 **Abordagem:**
+
 1. Para cada endpoint legacy, criar equivalente 1:1 no NestJS
 2. Manter mesma sequência de chamadas ao banco
 3. Preservar mesmas validações
@@ -1855,35 +1869,37 @@ Request Body:
 
 ### Matriz de Equivalência: Legacy → Novo
 
-| # | Funcionalidade Legacy | Endpoint PHP | Procedure/View Usado | Novo Endpoint NestJS | Alteração na Lógica? |
-|---|----------------------|--------------|----------------------|---------------------|----------------------|
-| 1 | Importar Unimed CNPJ | `?acao=saveUnimedCnpj` | Inserts em `gc.uni_dados_cobranca` | `POST /planos-saude/importacao/unimed/cnpj` | ❌ Não - mesma lógica |
-| 2 | Importar Unimed Contrato | `?acao=saveUnimedContrato` | Inserts em `gc.uni_dados_cobranca` | `POST /planos-saude/importacao/unimed/contrato` | ❌ Não - mesma lógica |
-| 3 | Importar HapVida CSV | `?acao=leCSV` | Inserts em `nbs.hapvida_plano` | `POST /planos-saude/importacao/hapvida` | ❌ Não - mesma lógica |
-| 4 | Processar Resumo | `?acao=save` | `gc.PKG_UNI_SAUDE.p_uni_resumo` | `POST /planos-saude/importacao/processar-resumo` | ❌ Não - mesma procedure |
-| 5 | Buscar Colaboradores | `?acao=Buscar` | `gc.vw_uni_resumo_colaborador` | `GET /planos-saude/colaboradores` | ❌ Não - mesma view |
-| 6 | Atualizar Exportação (1) | `?acao=update` | UPDATE em `gc.uni_resumo_colaborador` | `PATCH /planos-saude/colaboradores/:cpf/exportacao` | ❌ Não - mesmo UPDATE |
-| 7 | Atualizar Exportação (Todos) | `?acao=updateTodosColaborador` | UPDATE em `gc.uni_resumo_colaborador` | `PATCH /planos-saude/colaboradores/empresa/:id/exportacao` | ❌ Não - mesmo UPDATE |
-| 8 | Atualizar Valor Empresa | `?acao=updateValor` | UPDATE em `nbs.mcw_colaborador` | `PATCH /planos-saude/colaboradores/valor-empresa` | ❌ Não - mesmo UPDATE |
-| 9 | Buscar Processos | `?acao=Buscarprocesso` | `gc.mcw_processo` | `GET /planos-saude/processos` | ❌ Não - mesma query |
-| 10 | Executar Processos | `?acao=Execute` | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar` | ❌ Não - mesma procedure |
-| 11 | Histórico Processo | `?acao=HistoricoProcesso` | `gc.vw_mcw_processo_log` | `GET /planos-saude/processos/:codigo/historico` | ❌ Não - mesma view |
-| 12 | Exportar TOTVS | `?acao=ExUnimed` | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar` | ❌ Não - mesma procedure |
-| 13 | Gerar DIRF | `?acao=unimedDIRF` | Procedure custom | `POST /planos-saude/dirf` | ❌ Não - mesma procedure |
-| 14 | Relatório Colaborador | `?acao=RelatorioColaborador` | Jasper Report | `GET /planos-saude/relatorios/colaborador` | ⚠️ Jasper → PDF novo |
-| 15 | Relatório Empresa | `?acao=RelatorioEmpresaColaborador` | Jasper Report | `GET /planos-saude/relatorios/empresa-colaboradores` | ⚠️ Jasper → PDF novo |
-| 16 | Relatório Pagamento | `?acao=RelatorioPagamento` | Jasper Report | `GET /planos-saude/relatorios/pagamento` | ⚠️ Jasper → PDF novo |
-| 17 | Relatório Não Lançamento | `?acao=RelatorioNaoPagamento` | Jasper Report | `GET /planos-saude/relatorios/nao-lancamento` | ⚠️ Jasper → PDF novo |
-| 18 | Resumo Departamento | `?acao=resumoDept` | Jasper Report | `GET /planos-saude/relatorios/departamento` | ⚠️ Jasper → PDF novo |
-| 19 | Resumo Centro Custo | `?acao=resumoCentroCust` | Jasper Report | `GET /planos-saude/relatorios/centro-custo` | ⚠️ Jasper → PDF novo |
+| #   | Funcionalidade Legacy        | Endpoint PHP                        | Procedure/View Usado                        | Novo Endpoint NestJS                                       | Alteração na Lógica?     |
+| --- | ---------------------------- | ----------------------------------- | ------------------------------------------- | ---------------------------------------------------------- | ------------------------ |
+| 1   | Importar Unimed CNPJ         | `?acao=saveUnimedCnpj`              | Inserts em `gc.uni_dados_cobranca`          | `POST /planos-saude/importacao/unimed/cnpj`                | ❌ Não - mesma lógica    |
+| 2   | Importar Unimed Contrato     | `?acao=saveUnimedContrato`          | Inserts em `gc.uni_dados_cobranca`          | `POST /planos-saude/importacao/unimed/contrato`            | ❌ Não - mesma lógica    |
+| 3   | Importar HapVida CSV         | `?acao=leCSV`                       | Inserts em `nbs.hapvida_plano`              | `POST /planos-saude/importacao/hapvida`                    | ❌ Não - mesma lógica    |
+| 4   | Processar Resumo             | `?acao=save`                        | `gc.PKG_UNI_SAUDE.p_uni_resumo`             | `POST /planos-saude/importacao/processar-resumo`           | ❌ Não - mesma procedure |
+| 5   | Buscar Colaboradores         | `?acao=Buscar`                      | `gc.vw_uni_resumo_colaborador`              | `GET /planos-saude/colaboradores`                          | ❌ Não - mesma view      |
+| 6   | Atualizar Exportação (1)     | `?acao=update`                      | UPDATE em `gc.uni_resumo_colaborador`       | `PATCH /planos-saude/colaboradores/:cpf/exportacao`        | ❌ Não - mesmo UPDATE    |
+| 7   | Atualizar Exportação (Todos) | `?acao=updateTodosColaborador`      | UPDATE em `gc.uni_resumo_colaborador`       | `PATCH /planos-saude/colaboradores/empresa/:id/exportacao` | ❌ Não - mesmo UPDATE    |
+| 8   | Atualizar Valor Empresa      | `?acao=updateValor`                 | UPDATE em `nbs.mcw_colaborador`             | `PATCH /planos-saude/colaboradores/valor-empresa`          | ❌ Não - mesmo UPDATE    |
+| 9   | Buscar Processos             | `?acao=Buscarprocesso`              | `gc.mcw_processo`                           | `GET /planos-saude/processos`                              | ❌ Não - mesma query     |
+| 10  | Executar Processos           | `?acao=Execute`                     | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar`                    | ❌ Não - mesma procedure |
+| 11  | Histórico Processo           | `?acao=HistoricoProcesso`           | `gc.vw_mcw_processo_log`                    | `GET /planos-saude/processos/:codigo/historico`            | ❌ Não - mesma view      |
+| 12  | Exportar TOTVS               | `?acao=ExUnimed`                    | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar`                    | ❌ Não - mesma procedure |
+| 13  | Gerar DIRF                   | `?acao=unimedDIRF`                  | Procedure custom                            | `POST /planos-saude/dirf`                                  | ❌ Não - mesma procedure |
+| 14  | Relatório Colaborador        | `?acao=RelatorioColaborador`        | Jasper Report                               | `GET /planos-saude/relatorios/colaborador`                 | ⚠️ Jasper → PDF novo     |
+| 15  | Relatório Empresa            | `?acao=RelatorioEmpresaColaborador` | Jasper Report                               | `GET /planos-saude/relatorios/empresa-colaboradores`       | ⚠️ Jasper → PDF novo     |
+| 16  | Relatório Pagamento          | `?acao=RelatorioPagamento`          | Jasper Report                               | `GET /planos-saude/relatorios/pagamento`                   | ⚠️ Jasper → PDF novo     |
+| 17  | Relatório Não Lançamento     | `?acao=RelatorioNaoPagamento`       | Jasper Report                               | `GET /planos-saude/relatorios/nao-lancamento`              | ⚠️ Jasper → PDF novo     |
+| 18  | Resumo Departamento          | `?acao=resumoDept`                  | Jasper Report                               | `GET /planos-saude/relatorios/departamento`                | ⚠️ Jasper → PDF novo     |
+| 19  | Resumo Centro Custo          | `?acao=resumoCentroCust`            | Jasper Report                               | `GET /planos-saude/relatorios/centro-custo`                | ⚠️ Jasper → PDF novo     |
 
 **Legenda:**
+
 - ❌ **Não** - Lógica 100% preservada, apenas traduzida para TypeScript
 - ⚠️ **Jasper → PDF novo** - Queries permanecem as mesmas, apenas engine de PDF muda
 
 ### Compromisso de Compatibilidade
 
 **Garantias:**
+
 1. ✅ Todos os endpoints legacy terão equivalente 1:1
 2. ✅ Mesmas procedures Oracle serão chamadas
 3. ✅ Mesmas views serão consultadas
@@ -1891,6 +1907,7 @@ Request Body:
 5. ✅ Mesmos resultados serão obtidos
 
 **Única exceção: Relatórios**
+
 - Queries Oracle: **permanecem iguais**
 - Engine de geração: Jasper Reports → pdfmake/puppeteer
 - Layout: **mantido o mais próximo possível**

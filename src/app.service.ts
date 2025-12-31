@@ -30,7 +30,7 @@ export class AppService {
    */
   getHealth() {
     const uptime = (Date.now() - this.startTime) / 1000; // em segundos
-    
+
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),

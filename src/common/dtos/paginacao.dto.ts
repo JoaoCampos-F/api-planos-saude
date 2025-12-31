@@ -43,24 +43,24 @@ export class PaginacaoDto {
 export interface RespostaPaginada<T> {
   /** Dados da página atual */
   dados: T[];
-  
+
   /** Metadados de paginação */
   paginacao: {
     /** Página atual */
     paginaAtual: number;
-    
+
     /** Quantidade de itens por página */
     tamanhoPagina: number;
-    
+
     /** Total de itens (todas as páginas) */
     totalItens: number;
-    
+
     /** Total de páginas */
     totalPaginas: number;
-    
+
     /** Indica se existe página anterior */
     temPaginaAnterior: boolean;
-    
+
     /** Indica se existe próxima página */
     temProximaPagina: boolean;
   };

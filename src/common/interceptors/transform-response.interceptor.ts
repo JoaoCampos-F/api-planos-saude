@@ -10,19 +10,20 @@ import { RespostaSuccessDto } from '../dtos/resposta.dto';
 
 /**
  * Interceptor global que transforma todas as respostas em formato padronizado.
- * 
+ *
  * Antes: { dados: [...] }
  * Depois: { sucesso: true, mensagem: '...', dados: [...], timestamp: '...' }
- * 
+ *
  * IMPORTANTE: Este interceptor NÃO deve ser aplicado em:
  * - Rotas de health check
  * - Swagger/OpenAPI
  * - Arquivos estáticos
  */
 @Injectable()
-export class TransformResponseInterceptor<T>
-  implements NestInterceptor<T, RespostaSuccessDto<T>>
-{
+export class TransformResponseInterceptor<T> implements NestInterceptor<
+  T,
+  RespostaSuccessDto<T>
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
@@ -44,10 +45,7 @@ export class TransformResponseInterceptor<T>
         }
 
         // Transforma resposta em formato padrão
-        return new RespostaSuccessDto(
-          'Operação realizada com sucesso',
-          data,
-        );
+        return new RespostaSuccessDto('Operação realizada com sucesso', data);
       }),
     );
   }

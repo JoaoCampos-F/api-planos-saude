@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 /**
  * Serviço customizado de logging.
  * Centraliza logs da aplicação com níveis e formatação consistentes.
- * 
+ *
  * Em produção, pode ser estendido para integrar com ferramentas
  * como Winston, Pino, ou enviar para serviços externos (Datadog, New Relic).
  */
@@ -14,7 +14,10 @@ export class LoggerService implements NestLoggerService {
   private readonly logLevel: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.appName = this.configService.get<string>('app.name', 'API-Planos-Saude');
+    this.appName = this.configService.get<string>(
+      'app.name',
+      'API-Planos-Saude',
+    );
     this.logLevel = this.configService.get<string>('app.logLevel', 'info');
   }
 
@@ -75,7 +78,7 @@ export class LoggerService implements NestLoggerService {
     const levels = ['error', 'warn', 'info', 'debug', 'verbose'];
     const currentLevelIndex = levels.indexOf(this.logLevel);
     const requestedLevelIndex = levels.indexOf(level);
-    
+
     return requestedLevelIndex <= currentLevelIndex;
   }
 
@@ -132,7 +135,12 @@ export class LoggerService implements NestLoggerService {
    * Registra log de requisição HTTP externa.
    * Útil para rastreamento de chamadas a APIs externas.
    */
-  logHttpRequest(method: string, url: string, status?: number, duration?: number): void {
+  logHttpRequest(
+    method: string,
+    url: string,
+    status?: number,
+    duration?: number,
+  ): void {
     const message = `HTTP ${method} ${url}${status ? ` - ${status}` : ''}${duration ? ` (${duration}ms)` : ''}`;
     if (status && status >= 400) {
       this.warn(message, 'HttpClient');

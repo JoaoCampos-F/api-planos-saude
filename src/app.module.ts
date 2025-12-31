@@ -11,7 +11,7 @@ import appConfig from './config/app.config';
 
 /**
  * Módulo raiz da aplicação.
- * 
+ *
  * Importa módulos globais:
  * - ConfigModule: Gerenciamento de configurações via .env
  * - DatabaseModule: Conexão com Oracle Database
@@ -27,12 +27,12 @@ import appConfig from './config/app.config';
       load: [databaseConfig, integrationsConfig, appConfig],
       cache: true,
     }),
-    
+
     // Módulos globais de infraestrutura
     DatabaseModule,
     LoggerModule,
     CacheModule,
-    
+
     // Módulos de negócio serão adicionados aqui conforme desenvolvimento
   ],
   controllers: [AppController],
