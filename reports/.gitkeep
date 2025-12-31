@@ -1,0 +1,3 @@
+# Este arquivo mantém o diretório no Git mesmo estando vazio
+# Relatórios Jasper (.jasper) devem ficar aqui
+# Relatórios gerados (.pdf, .xls) são ignorados pelo .gitignore

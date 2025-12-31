@@ -1,70 +1,283 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API Planos de Saúde
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API moderna para gerenciamento de planos de saúde (Unimed e HapVida), desenvolvida em NestJS + TypeScript + Oracle Database.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📋 Sobre o Projeto
 
-## Description
+Esta API é uma modernização do módulo "uni" do sistema legado (npd-legacy) em PHP. O projeto mantém **exatamente a mesma lógica de negócio**, alterando apenas a tecnologia utilizada.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Filosofia do Projeto
 
-## Project setup
+> **"Mesma lógica, tecnologia moderna"**
+
+- ✅ Todas as regras de negócio permanecem no banco de dados Oracle (procedures, views, triggers)
+- ✅ A aplicação é apenas uma camada de acesso moderna e bem documentada
+- ✅ Zero mudanças nas procedures existentes - apenas chamadas via node-oracledb
+- ✅ Código transparente: qualquer desenvolvedor pode ver que apenas chama o banco
+
+### Funcionalidades Principais
+
+1. **Importação de Dados**
+   - Unimed Cuiabá: Integração via REST API + fallback SOAP
+   - HapVida: Importação via arquivo CSV
+
+2. **Gestão de Colaboradores**
+   - Listagem com filtros (mês, ano, status, operadora)
+   - Atualização de valores e status de exportação
+   - Operações em lote
+
+3. **Processos Automatizados**
+   - Execução de resumo de colaboradores
+   - Fechamento de comissões MCW
+   - Exportação para TOTVS
+
+4. **Relatórios Gerenciais**
+   - 6 tipos de relatórios Jasper
+   - Exportação em PDF/Excel
+   - Histórico de importações
+
+## 🛠 Tecnologias Utilizadas
+
+- **NestJS 11** - Framework enterprise para Node.js
+- **TypeScript** - Tipagem estática e IntelliSense
+- **Oracle Database** - Database principal (schemas: gc, nbs)
+- **node-oracledb 6.10** - Driver nativo Oracle (SEM ORM)
+- **Swagger/OpenAPI** - Documentação automática da API
+- **class-validator** - Validação de DTOs
+- **Axios** - Cliente HTTP para APIs externas
+- **date-fns** - Manipulação de datas
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+
+- Node.js 18+ ou 20+
+- pnpm (gerenciador de pacotes)
+- Oracle Database (acesso aos schemas gc e nbs)
+- Oracle Instant Client instalado no sistema
+
+### Instalação
 
 ```bash
-$ pnpm install
+# 1. Clone o repositório
+git clone <url-do-repositorio>
+cd api-planos-saude
+
+# 2. Instale as dependências
+pnpm install
+
+# 3. Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas credenciais
+
+# 4. Compile o projeto
+pnpm run build
+
+# 5. Execute em modo desenvolvimento
+pnpm run start:dev
+
+# 6. Ou execute em modo produção
+pnpm run start:prod
 ```
 
-## Compile and run the project
+### Acessando a Aplicação
 
-```bash
-# development
-$ pnpm run start
+Após iniciar, acesse:
 
-# watch mode
-$ pnpm run start:dev
+- **API**: http://localhost:3000/api
+- **Swagger Docs**: http://localhost:3000/api/docs
+- **Health Check**: http://localhost:3000/api/health
 
-# production mode
-$ pnpm run start:prod
+## 📁 Estrutura do Projeto
+
+```
+api-planos-saude/
+├── src/
+│   ├── common/                    # DTOs, filters e interceptors compartilhados
+│   │   ├── dtos/                  # DTOs reutilizáveis
+│   │   ├── filters/               # Filtros de exceção
+│   │   └── interceptors/          # Interceptors globais
+│   ├── config/                    # Configurações da aplicação
+│   │   ├── app.config.ts          # Configurações gerais
+│   │   ├── database.config.ts     # Configuração Oracle
+│   │   └── integrations.config.ts # Configuração APIs externas
+│   ├── modules/                   # Módulos de negócio
+│   │   ├── planos-saude/          # Módulo principal
+│   │   │   └── interfaces/        # Interfaces TypeScript (tipos)
+│   │   ├── importacao/            # Módulo de importação (em desenvolvimento)
+│   │   └── exportacao/            # Módulo de exportação (em desenvolvimento)
+│   ├── shared/                    # Módulos compartilhados globais
+│   │   ├── database/              # OracleService (core)
+│   │   ├── logger/                # LoggerService
+│   │   └── cache/                 # CacheService
+│   ├── app.module.ts              # Módulo raiz
+│   └── main.ts                    # Bootstrap da aplicação
+├── uploads/                       # Diretório de uploads (CSV HapVida)
+├── temp/                          # Diretório temporário
+├── reports/                       # Relatórios Jasper
+├── .env                           # Variáveis de ambiente (NÃO COMMITADO)
+├── .env.example                   # Template de configuração
+└── README.md                      # Este arquivo
 ```
 
-## Run tests
+## 🏗 Arquitetura
 
-```bash
-# unit tests
-$ pnpm run test
+### Camadas da Aplicação
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```
+Controller → Service → Repository → Oracle Database
+    ↓          ↓           ↓              ↓
+  Rotas    Orquestra   Queries      Procedures
+  Swagger  Validações   Simples      Views
+  DTOs     Logs         Thin Layer   Triggers
 ```
 
-## Deployment
+### Princípios Fundamentais
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+1. **Separação de Responsabilidades**
+   - Controllers: Rotas e validação de entrada
+   - Services: Orquestração de lógica
+   - Repositories: Acesso ao banco (queries simples)
+   - Database: Toda a lógica de negócio (procedures/views)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+2. **Código Transparente**
+   ```typescript
+   // ✅ BOM - Código transparente
+   async getResumoColaborador(mes: number, ano: number) {
+     return this.oracleService.query(
+       'SELECT * FROM gc.vw_uni_resumo_colaborador WHERE mes_ref = :mes AND ano_ref = :ano',
+       { mes, ano }
+     );
+   }
+   
+   // ❌ EVITAR - Lógica no código
+   async calcularValorLiquido(titular, dependentes) {
+     return titular + dependentes * 0.5; // NÃO! Isso deve estar no banco
+   }
+   ```
+
+3. **Zero Mudanças no Banco**
+   - Procedures existentes são chamadas via `oracleService.callProcedure()`
+   - Views existentes são consultadas via `oracleService.query()`
+   - Triggers e constraints continuam funcionando normalmente
+
+## 🔌 Integrações
+
+### Unimed Cuiabá
+
+- **REST API**: https://ws.unimedcuiaba.coop.br/api
+- **SOAP (Fallback)**: https://ws.unimedcuiaba.coop.br/soap
+- Autenticação: Basic Auth (configurado no .env)
+
+### HapVida
+
+- Importação via arquivo CSV
+- Upload manual ou programático
+- Parsing e validação automática
+
+## 📊 Banco de Dados
+
+### Schemas Utilizados
+
+- **gc**: Schema principal (dados de cobrança, colaboradores, processos)
+- **nbs**: Schema secundário (planos HapVida)
+
+### Principais Tables/Views
+
+- `gc.uni_dados_cobranca` - Dados brutos Unimed
+- `gc.vw_uni_resumo_colaborador` - View consolidada
+- `nbs.hapvida_plano` - Dados HapVida
+- `gc.mcw_processo` - Controle de processos
+
+### Stored Procedures
+
+- `gc.PKG_UNI_SAUDE.p_uni_resumo` - Gera resumo de colaboradores
+- `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` - Fecha comissões
+
+## 🧪 Testes
 
 ```bash
-$ pnpm install -g @nestjs/mau
+# Testes unitários
+pnpm run test
+
+# Testes e2e
+pnpm run test:e2e
+
+# Cobertura de testes
+pnpm run test:cov
+```
+
+## 📝 Convenções de Código
+
+### Nomenclatura
+
+- **Interfaces**: PascalCase (ex: `ColaboradorResumo`)
+- **DTOs**: PascalCase com sufixo Dto (ex: `ImportarUnimedDto`)
+- **Services**: PascalCase com sufixo Service (ex: `ImportacaoService`)
+- **Métodos**: camelCase (ex: `importarDadosUnimed()`)
+- **Variáveis**: camelCase (ex: `mesReferencia`)
+
+### Comentários
+
+```typescript
+// ✅ BOM - Documentação clara da intenção
+/**
+ * Importa dados da Unimed para o mês/ano especificado.
+ * 
+ * IMPORTANTE: Esta função apenas chama a API e insere no banco.
+ * Todo o processamento de cálculos é feito pela view gc.vw_uni_resumo_colaborador.
+ */
+```
+
+## 🚧 Status do Projeto
+
+### ✅ Fase 1 - Preparação e Setup (CONCLUÍDA)
+
+- ✅ Dependências instaladas
+- ✅ Configuração de ambiente
+- ✅ OracleService implementado
+- ✅ Módulos globais (Logger, Cache)
+- ✅ Interfaces TypeScript
+- ✅ DTOs base
+- ✅ Swagger configurado
+- ✅ Interceptors e Filters
+
+### 🔄 Fase 2 - Importação (EM ANDAMENTO)
+
+- ⏳ UnimedApiService
+- ⏳ HapVidaImportacaoService
+- ⏳ Repositories
+- ⏳ Controllers
+
+### ⏳ Fase 3 - Colaboradores (PENDENTE)
+
+- ⏳ CRUD de colaboradores
+- ⏳ Filtros e paginação
+- ⏳ Operações em lote
+
+### ⏳ Fase 4 - Processos (PENDENTE)
+
+- ⏳ Execução de procedures
+- ⏳ Controle de processos MCW
+
+### ⏳ Fase 5 - Relatórios (PENDENTE)
+
+- ⏳ Integração com Jasper
+- ⏳ 6 tipos de relatórios
+
+## 📚 Documentação Adicional
+
+- [NestJS Documentation](https://docs.nestjs.com)
+- [Oracle node-oracledb](https://oracle.github.io/node-oracledb/)
+- [Swagger/OpenAPI](https://swagger.io/)
+
+## 👥 Equipe de Desenvolvimento
+
+Projeto desenvolvido internamente para modernização do sistema legado.
+
+## 📄 Licença
+
+Proprietary - Todos os direitos reservados.
 $ mau deploy
 ```
 

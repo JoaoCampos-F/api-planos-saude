@@ -1,12 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from '../../app.service';
+import { ApiTags } from '@nestjs/swagger';
 
-@Controller()
+/**
+ * Controller de importação de dados das operadoras.
+ * Será implementado nas próximas fases.
+ */
+@ApiTags('Importação')
+@Controller('importacao')
 export class ImportacaoController {
-  constructor(private readonly appService: AppService) {}
-
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  placeholder() {
+    return { mensagem: 'Módulo de importação - em desenvolvimento' };
   }
 }

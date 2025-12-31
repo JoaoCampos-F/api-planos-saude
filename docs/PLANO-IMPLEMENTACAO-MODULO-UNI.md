@@ -15,17 +15,28 @@ Este documento apresenta o plano completo de implementação para migração do 
 
 ### Objetivo Principal
 
-Migrar o módulo UNI do NPD-Legacy (PHP) para NestJS, mantendo todas as funcionalidades existentes e aplicando melhorias de arquitetura, seguindo os princípios SOLID, Clean Code e as boas práticas da comunidade NestJS.
+Migrar o módulo UNI do NPD-Legacy (PHP) para NestJS, **mantendo 100% da lógica funcional existente** e aplicando melhorias de arquitetura, seguindo os princípios SOLID, Clean Code e as boas práticas da comunidade NestJS.
 
 ### Objetivos Específicos
 
-- ✅ Manter 100% das funcionalidades atuais
-- ✅ Preservar a estrutura do banco de dados Oracle
-- ✅ Implementar arquitetura escalável e testável
-- ✅ Aplicar padrões de código limpo e manutenível
+- ✅ Manter 100% das funcionalidades atuais **com a mesma lógica**
+- ✅ Preservar **TODAS** stored procedures e views do Oracle
+- ✅ **Não alterar** regras de negócio do banco de dados
+- ✅ Traduzir PHP → TypeScript/NestJS (mesma sequência de operações)
+- ✅ Implementar arquitetura moderna e testável
+- ✅ Melhorar: UX, validações de entrada, logs, tratamento de erros
 - ✅ Preparar base para futura migração do front-end para Vue.js
-- ✅ Melhorar performance e segurança
-- ✅ Facilitar manutenção futura
+- ✅ Adicionar documentação (Swagger) e testes automatizados
+- ✅ Facilitar manutenção futura com código limpo
+
+### Restrições
+
+- ❌ **NÃO** alterar stored procedures existentes
+- ❌ **NÃO** modificar views do banco
+- ❌ **NÃO** reescrever lógica que está no Oracle
+- ❌ **NÃO** mudar estrutura de tabelas
+- ✅ **SIM** traduzir código PHP para TypeScript mantendo mesma lógica
+- ✅ **SIM** adicionar melhorias em camadas acima do banco (validação, logs, UX)
 
 ---
 
@@ -300,13 +311,13 @@ src/
 │   │   │       ├── parametros-relatorio.dto.ts
 │   │   │       └── gerar-relatorio.dto.ts
 │   │   │
-│   │   ├── entities/               # Entidades do domínio
-│   │   │   ├── unimed.entity.ts
-│   │   │   ├── hapvida.entity.ts
-│   │   │   ├── colaborador-resumo.entity.ts
-│   │   │   └── processo-mcw.entity.ts
+│   │   ├── interfaces/             # TypeScript Interfaces (tipos puros)
+│   │   │   ├── unimed.interface.ts
+│   │   │   ├── hapvida.interface.ts
+│   │   │   ├── colaborador-resumo.interface.ts
+│   │   │   └── processo-mcw.interface.ts
 │   │   │
-│   │   ├── repositories/           # Camada de persistência
+│   │   ├── repositories/           # Camada de persistência (wrappers de queries)
 │   │   │   ├── unimed.repository.ts
 │   │   │   ├── hapvida.repository.ts
 │   │   │   ├── colaborador.repository.ts
@@ -378,7 +389,322 @@ src/
 └── main.ts
 ```
 
-### 2. Princípios de Design Aplicados
+### 2. Filosofia de Implementação: "Mesma Lógica, Tecnologia Moderna"
+
+#### Princípio Fundamental
+
+**🎯 Objetivo: Fazer EXATAMENTE o que o legacy faz, mas com tecnologia moderna**
+
+**NÃO vamos:**
+- ❌ Alterar stored procedures
+- ❌ Alterar views
+- ❌ Mudar regras de negócio
+- ❌ Modificar validações existentes
+- ❌ Reescrever lógica do banco
+
+**Vamos apenas:**
+- ✅ Traduzir PHP → TypeScript/NestJS
+- ✅ Manter mesma sequência de chamadas
+- ✅ Preservar mesma lógica de validação
+- ✅ Usar REST API quando disponível (em vez de SOAP)
+- ✅ Adicionar melhorias em: logs, tratamento de erros, UX
+- ✅ Documentar com Swagger
+- ✅ Adicionar testes automatizados
+
+**O banco de dados faz o trabalho pesado, a API apenas:**
+1. ✅ Valida entrada (mesmas validações do legacy)
+2. ✅ Chama procedures/views do banco (mesmas chamadas)
+3. ✅ Formata resposta (JSON em vez de HTML)
+4. ✅ Trata erros (com logs estruturados)
+
+**Código auto-explicativo:**
+```typescript
+// ❌ EVITAR - Lógica de negócio no app
+async importarUnimed(dados: ImportarUnimedDto) {
+  // 200 linhas de código processando, validando, calculando...
+}
+
+// ✅ PREFERIR - Transparente e direto
+async importarUnimed(dados: ImportarUnimedDto): Promise<ImportacaoResponse> {
+  // Chama a API externa
+  const dadosUnimed = await this.unimedApiClient.buscarPorCNPJ(dados);
+  
+  // Insere no banco (que já faz todas as validações e processamentos)
+  await this.oracleDb.execute(
+    'INSERT INTO gc.uni_dados_cobranca (...) VALUES (...)'
+  );
+  
+  // Executa a procedure que faz o resumo
+  // (toda a lógica está aqui dentro, testada e funcionando há anos)
+  await this.oracleDb.callProcedure(
+    'gc.PKG_UNI_SAUDE.p_uni_resumo',
+    { mes: dados.mes, ano: dados.ano }
+  );
+  
+  return { success: true, registros: dadosUnimed.length };
+}
+```
+
+**Benefícios:**
+- 🔍 **Manutenção fácil**: "Ah, só chama a procedure X"
+- 🐛 **Debug simples**: Problema está no banco ou na API externa
+- 🚀 **Performance**: Lógica otimizada no Oracle
+- 📝 **Menos código**: Menos bugs, menos testes
+- ♻️ **Reuso**: Procedures já testadas e validadas
+- ✅ **Confiança**: Lógica já funciona há anos em produção
+
+#### Comparação: Legacy vs Novo (Lógica Idêntica)
+
+**Exemplo 1: Importação Unimed por CNPJ**
+
+```php
+// ❌ LEGACY (PHP) - UnimedController.php
+case 'saveUnimedCnpj':
+  $Unimed = new Unimed();
+  $UnimedDAO = new UnimedDAO($Unimed);
+  $pMes = addslashes($_POST['mes']);
+  $pAno = addslashes($_POST['ano']);
+  $periodo = str_pad($pMes, 2, "0", STR_PAD_LEFT) . $pAno;
+  $Unimed->setPeriodo($periodo);
+  $Unimed->setMesRef($pMes);
+  $Unimed->setAnoRef($pAno);
+  $result = $UnimedDAO->getDadosUniCnpj();
+  // ... resto do código
+  break;
+```
+
+```typescript
+// ✅ NOVO (NestJS) - unimed-importacao.service.ts
+// MESMA LÓGICA, código mais limpo e tipado
+async importarPorCNPJ(dto: ImportarUnimedDto): Promise<ImportacaoResponse> {
+  // 1. Formata período (mesma lógica)
+  const periodo = `${dto.mes.toString().padStart(2, '0')}${dto.ano}`;
+  
+  // 2. Busca empresas para processar (mesma query)
+  const empresas = await this.repository.buscarEmpresasProcessarUnimed();
+  
+  // 3. Para cada empresa, chama API e insere (mesma lógica)
+  for (const empresa of empresas) {
+    const dados = await this.unimedApi.buscarPorCNPJ({
+      cnpj: empresa.cnpj,
+      periodo
+    });
+    
+    // 4. Insere no banco (mesmas colunas, mesma tabela)
+    await this.repository.inserirDadosCobranca(dados, dto.mes, dto.ano);
+  }
+  
+  return { success: true, registros: total };
+}
+```
+
+**Exemplo 2: Buscar Colaboradores**
+
+```php
+// ❌ LEGACY (PHP)
+case 'Buscar':
+  $query = "select * from gc.vw_uni_resumo_colaborador a ";
+  $query .= " where 1=1 ";
+  $query .= !empty($empresa) ? " and a.cod_empresa = ".$EmpresaDAO->_isCodEmpresa() : "";
+  $query .= !empty($mes) ? " and a.mes_ref = '{$mes}'" : "";
+  $query .= !empty($ano) ? " and a.ano_ref = '{$ano}'" : "";
+  $result = $DB->oQuery($query);
+  // ... processa resultado
+  break;
+```
+
+```typescript
+// ✅ NOVO (NestJS) - colaborador.repository.ts
+// MESMA QUERY, parametrização mais segura
+async buscarColaboradores(filtros: BuscarColaboradorDto) {
+  const query = `
+    SELECT * FROM gc.vw_uni_resumo_colaborador a
+    WHERE 1=1
+      AND (:empresa IS NULL OR a.cod_empresa = :empresa)
+      AND a.mes_ref = :mes
+      AND a.ano_ref = :ano
+    ORDER BY a.cod_band, a.apelido, a.colaborador
+  `;
+  
+  return this.db.query<ColaboradorResumo>(query, {
+    empresa: filtros.empresa || null,
+    mes: filtros.mes,
+    ano: filtros.ano
+  });
+}
+```
+
+**Exemplo 3: Executar Procedure de Resumo**
+
+```php
+// ❌ LEGACY (PHP)
+case 'save':
+  $query = 'begin gc.PKG_UNI_SAUDE.p_uni_resumo('
+         . $Unimed->getMesRef() . ','
+         . $Unimed->getAnoRef() . '); end;';
+  $result = $DB->oQuery($query);
+  break;
+```
+
+```typescript
+// ✅ NOVO (NestJS) - processo-executor.service.ts
+// MESMA PROCEDURE, mesmos parâmetros
+async executarResumo(mes: number, ano: number): Promise<void> {
+  await this.db.callProcedure('gc.PKG_UNI_SAUDE.p_uni_resumo', {
+    mes,
+    ano
+  });
+}
+```
+
+**O que muda:**
+- ✅ Sintaxe moderna (TypeScript)
+- ✅ Type-safety
+- ✅ Parametrização segura (SQL injection)
+- ✅ Async/await
+- ✅ Melhor tratamento de erros
+
+**O que NÃO muda:**
+- ✅ Mesma procedure
+- ✅ Mesmos parâmetros
+- ✅ Mesma lógica
+- ✅ Mesmo resultado
+
+---
+
+### 3. Onde Adicionar Melhorias (Sem Alterar Lógica Core)
+
+#### Melhorias Permitidas
+
+**1. Validações de Entrada (Antes de chamar o banco)**
+```typescript
+// ✅ Adicionar validações com class-validator
+export class ImportarUnimedDto {
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  @ApiProperty({ example: 12, description: 'Mês de referência' })
+  mes: number;
+
+  @IsInt()
+  @Min(2020)
+  @Max(2030)
+  @ApiProperty({ example: 2024, description: 'Ano de referência' })
+  ano: number;
+}
+// Lógica do banco permanece intacta
+```
+
+**2. Logging Estruturado**
+```typescript
+// ✅ Adicionar logs detalhados
+this.logger.log(`Iniciando importação Unimed - Período: ${mes}/${ano}`);
+try {
+  await this.executarImportacao(mes, ano);
+  this.logger.log(`Importação concluída - ${total} registros`);
+} catch (error) {
+  this.logger.error(`Erro na importação: ${error.message}`, error.stack);
+  throw error;
+}
+// Lógica do banco permanece intacta
+```
+
+**3. Tratamento de Erros**
+```typescript
+// ✅ Erros mais descritivos
+try {
+  await this.db.callProcedure('gc.PKG_UNI_SAUDE.p_uni_resumo', params);
+} catch (error) {
+  if (error.message.includes('ORA-01403')) {
+    throw new NotFoundException('Dados não encontrados para o período informado');
+  }
+  if (error.message.includes('ORA-00001')) {
+    throw new ConflictException('Dados já importados para este período');
+  }
+  throw new InternalServerErrorException('Erro ao processar dados');
+}
+// Procedure continua a mesma
+```
+
+**4. Cache (Para Consultas Frequentes)**
+```typescript
+// ✅ Cache de listas estáticas
+@Cacheable({ ttl: 3600 })
+async listarEmpresas(): Promise<Empresa[]> {
+  return this.repository.buscarEmpresas();
+}
+// Query do banco permanece a mesma
+```
+
+**5. Paginação (Para Listagens Grandes)**
+```typescript
+// ✅ Adicionar paginação
+async buscarColaboradores(
+  filtros: BuscarColaboradorDto,
+  page: number = 1,
+  limit: number = 50
+): Promise<PaginatedResponse<ColaboradorResumo>> {
+  // Query permanece a mesma, apenas adiciona OFFSET/LIMIT
+  const query = `
+    SELECT * FROM (
+      SELECT a.*, ROWNUM rnum FROM (
+        SELECT * FROM gc.vw_uni_resumo_colaborador
+        WHERE ...
+      ) a WHERE ROWNUM <= :endRow
+    ) WHERE rnum > :startRow
+  `;
+  // View continua a mesma
+}
+```
+
+**6. Documentação Swagger**
+```typescript
+// ✅ Documentar endpoints
+@ApiOperation({ 
+  summary: 'Importar dados da Unimed por CNPJ',
+  description: 'Chama a API Unimed e executa a mesma lógica do legacy'
+})
+@ApiResponse({ status: 200, description: 'Importação realizada' })
+@ApiResponse({ status: 400, description: 'Dados inválidos' })
+// Lógica permanece a mesma
+```
+
+**7. Retry Logic (Para APIs Externas)**
+```typescript
+// ✅ Retry em caso de falha temporária
+@Retry({ maxAttempts: 3, backoff: 1000 })
+async buscarDadosUnimed(cnpj: string): Promise<any> {
+  return this.httpClient.get(`${this.apiUrl}/buscaporperiodocnpj`, { cnpj });
+}
+// API externa continua a mesma
+```
+
+**8. Validação de Permissões (Mais Granular)**
+```typescript
+// ✅ Guards mais robustos
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions('UNI:IMPORTAR')
+@Post('importacao/unimed')
+async importar() {
+  // Lógica de importação permanece a mesma
+}
+```
+
+#### Melhorias NÃO Permitidas
+
+**❌ NÃO fazer:**
+- Reescrever cálculos que estão nas procedures
+- Modificar lógica de validação do banco
+- Alterar regras de negócio
+- Mudar estrutura de dados
+- Reimplementar aggregations que estão nas views
+
+**Regra de Ouro:**
+> "Se o legacy faz assim, fazemos assim. Apenas com código mais limpo e melhor UX."
+
+---
+
+### 4. Princípios de Design Aplicados
 
 #### SOLID
 
@@ -421,20 +747,48 @@ src/
 
 ### 3. Padrões Arquiteturais
 
-**Camadas:**
+**Camadas Simplificadas:**
 
-1. **Controller Layer** - Recebe requisições HTTP
-2. **Service Layer** - Lógica de negócio
-3. **Repository Layer** - Acesso a dados
-4. **Entity Layer** - Modelos de domínio
+1. **Controller Layer** - Recebe requisições HTTP, valida com DTOs
+2. **Service Layer** - Orquestra chamadas (API externa → Banco → Response)
+3. **Repository Layer** - Wrapper fino sobre node-oracledb (sem lógica)
+4. **Interface Layer** - TypeScript interfaces para tipos (sem código runtime)
 
-**Padrões:**
+```typescript
+// Estrutura típica de um repository
+@Injectable()
+export class ColaboradorRepository {
+  constructor(private readonly db: OracleService) {}
 
-- Repository Pattern
-- Dependency Injection
-- DTO Pattern
-- Factory Pattern (para criação de relatórios)
-- Strategy Pattern (para diferentes operadoras)
+  // Método simples: apenas chama view do banco
+  async buscar(filtros: BuscarColaboradorDto): Promise<ColaboradorResumo[]> {
+    const query = `
+      SELECT * FROM gc.vw_uni_resumo_colaborador
+      WHERE cod_empresa = :empresa
+        AND mes_ref = :mes
+        AND ano_ref = :ano
+    `;
+    
+    return this.db.query<ColaboradorResumo>(query, filtros);
+  }
+
+  // Atualização: apenas UPDATE direto
+  async atualizarExportacao(cpf: string, exporta: 'S' | 'N'): Promise<void> {
+    await this.db.execute(
+      'UPDATE gc.uni_resumo_colaborador SET exporta = :exporta WHERE codigo_cpf = :cpf',
+      { exporta, cpf }
+    );
+  }
+}
+```
+
+**Padrões Aplicados:**
+
+- **Repository Pattern** (simplificado) - Apenas abstração de queries
+- **Dependency Injection** - Injeção de serviços NestJS
+- **DTO Pattern** - Validação de entrada/saída
+- **Interface Segregation** - Tipos TypeScript bem definidos
+- **Facade Pattern** - Service orquestra chamadas, não implementa lógica
 
 ---
 
@@ -457,20 +811,31 @@ src/
 
 #### 2. Banco de Dados
 
-**Oracle Database + oracledb (node-oracledb)**
+**Oracle Database + node-oracledb (Driver Nativo)**
 
 - ✅ **Por quê?**
-  - Banco existente - sem necessidade de migração
+  - Banco existente - **ZERO alterações necessárias**
   - Driver oficial Oracle para Node.js
-  - Suporte a features avançadas (procedures, packages, views)
-  - Performance otimizada
+  - Suporte nativo a stored procedures, packages e views
+  - Performance máxima - sem overhead de ORM
   - Conexão pool para escalabilidade
+  - **Transparência total**: código é apenas wrapper de chamadas ao banco
 
-**Alternativa considerada**: TypeORM
+**TypeScript Interfaces (Definição de Tipos)**
 
-- ❌ Limitações com stored procedures Oracle
-- ❌ Overhead desnecessário para queries complexas
-- ✅ Preferível usar oracledb diretamente
+- ✅ **Por quê?**
+  - Type-safety completo sem overhead de runtime
+  - Documentação viva dos modelos de dados
+  - IntelliSense no VS Code
+  - Validação em tempo de desenvolvimento
+  - Zero impacto na execução - apenas tipos
+
+**Por que NÃO usar ORM?**
+
+- ❌ TypeORM/Prisma adicionam complexidade desnecessária
+- ❌ Toda lógica já está no banco (procedures testadas e funcionais)
+- ❌ ORMs tentam "gerenciar" o banco (não queremos isso)
+- ✅ **Princípio**: Banco faz o trabalho, app apenas chama e formata
 
 #### 3. Validação e Transformação
 
@@ -608,7 +973,324 @@ src/
 
 ---
 
-## 📝 Endpoints da API
+## � Exemplo Prático Completo
+
+Para ilustrar a abordagem "zero lógica no app", veja um exemplo completo:
+
+### 1. Interface TypeScript (Tipos Claros)
+
+```typescript
+// src/modules/planos-saude/interfaces/colaborador-resumo.interface.ts
+
+/**
+ * Representa o resumo de um colaborador com plano de saúde.
+ * Mapeamento direto da view: gc.vw_uni_resumo_colaborador
+ */
+export interface ColaboradorResumo {
+  // Identificação
+  codigoCpf: string;        // codigo_cpf no banco
+  colaborador: string;
+  apelido: string;
+  
+  // Empresa
+  codEmpresa: number;       // cod_empresa
+  codColigada: number;      // codcoligada
+  codFilial: number;        // codfilial
+  codBand: string;          // cod_band
+  
+  // Período
+  mesRef: number;           // mes_ref
+  anoRef: number;           // ano_ref
+  
+  // Valores
+  mTitular: string;         // m_titular (formatado como string R$)
+  mDependente: string;      // m_dependente
+  valorConsumo: string;     // valor_consumo
+  percEmpresa: string;      // perc_empresa
+  valorTotal: string;       // valor_total
+  valorLiquido: string;     // valor_liquido
+  
+  // Status
+  ativo: 'S' | 'N';
+  exporta: 'S' | 'N';
+}
+```
+
+### 2. Repository (Wrapper de Queries)
+
+```typescript
+// src/modules/planos-saude/repositories/colaborador.repository.ts
+
+import { Injectable } from '@nestjs/common';
+import { OracleService } from '@/shared/database/oracle.service';
+import { ColaboradorResumo } from '../interfaces/colaborador-resumo.interface';
+import { BuscarColaboradorDto } from '../dtos/colaborador/buscar-colaborador.dto';
+
+@Injectable()
+export class ColaboradorRepository {
+  constructor(private readonly db: OracleService) {}
+
+  /**
+   * Busca colaboradores na view do banco.
+   * IMPORTANTE: Toda a lógica de cálculo e agregação está na view.
+   * Este método apenas executa a query e retorna os dados.
+   */
+  async buscarColaboradores(
+    filtros: BuscarColaboradorDto
+  ): Promise<ColaboradorResumo[]> {
+    // Query simples - view já traz tudo calculado
+    const query = `
+      SELECT 
+        a.codigo_cpf as "codigoCpf",
+        a.colaborador,
+        a.apelido,
+        a.cod_empresa as "codEmpresa",
+        a.codcoligada as "codColigada",
+        a.codfilial as "codFilial",
+        a.cod_band as "codBand",
+        a.mes_ref as "mesRef",
+        a.ano_ref as "anoRef",
+        a.m_titular as "mTitular",
+        a.m_dependente as "mDependente",
+        a.valor_consumo as "valorConsumo",
+        a.perc_empresa as "percEmpresa",
+        a.valor_total as "valorTotal",
+        a.valor_liquido as "valorLiquido",
+        a.ativo,
+        a.exporta
+      FROM gc.vw_uni_resumo_colaborador a
+      WHERE 1=1
+        AND (:empresa IS NULL OR a.cod_empresa = :empresa)
+        AND a.mes_ref = :mes
+        AND a.ano_ref = :ano
+        AND (:cpf IS NULL OR LTRIM(a.codigo_cpf, '0000') = LTRIM(:cpf, '0000'))
+      ORDER BY a.cod_band, a.apelido, a.colaborador
+    `;
+
+    return this.db.query<ColaboradorResumo>(query, {
+      empresa: filtros.empresa || null,
+      mes: filtros.mes,
+      ano: filtros.ano,
+      cpf: filtros.cpf || null
+    });
+  }
+
+  /**
+   * Atualiza status de exportação de um colaborador.
+   * IMPORTANTE: Apenas um UPDATE simples, sem lógica.
+   */
+  async atualizarExportacao(
+    cpf: string,
+    mes: number,
+    ano: number,
+    exporta: 'S' | 'N'
+  ): Promise<void> {
+    await this.db.execute(
+      `UPDATE gc.uni_resumo_colaborador 
+       SET exporta = :exporta
+       WHERE codigo_cpf = :cpf 
+         AND mes_ref = :mes 
+         AND ano_ref = :ano`,
+      { exporta, cpf, mes, ano }
+    );
+  }
+}
+```
+
+### 3. Service (Orquestração Simples)
+
+```typescript
+// src/modules/planos-saude/services/colaborador/colaborador.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { ColaboradorRepository } from '../../repositories/colaborador.repository';
+import { BuscarColaboradorDto } from '../../dtos/colaborador/buscar-colaborador.dto';
+import { ColaboradorResumo } from '../../interfaces/colaborador-resumo.interface';
+
+@Injectable()
+export class ColaboradorService {
+  constructor(
+    private readonly colaboradorRepo: ColaboradorRepository
+  ) {}
+
+  /**
+   * Busca colaboradores com filtros.
+   * Este método apenas:
+   * 1. Chama o repository (que chama a view do banco)
+   * 2. Retorna os dados
+   * 
+   * Toda a lógica de cálculo está na view gc.vw_uni_resumo_colaborador
+   */
+  async buscarColaboradores(
+    filtros: BuscarColaboradorDto
+  ): Promise<ColaboradorResumo[]> {
+    return this.colaboradorRepo.buscarColaboradores(filtros);
+  }
+
+  /**
+   * Atualiza status de exportação.
+   * Apenas chama o repository que faz UPDATE.
+   */
+  async atualizarExportacao(
+    cpf: string,
+    mes: number,
+    ano: number,
+    exporta: 'S' | 'N'
+  ): Promise<{ mensagem: string }> {
+    await this.colaboradorRepo.atualizarExportacao(cpf, mes, ano, exporta);
+    
+    const acao = exporta === 'S' ? 'readicionado' : 'não será enviado';
+    return {
+      mensagem: `O valor da Unimed referente ao mês ${mes} foi ${acao} ao Colaborador`
+    };
+  }
+}
+```
+
+### 4. Controller (Rotas HTTP)
+
+```typescript
+// src/modules/planos-saude/controllers/colaborador.controller.ts
+
+import { Controller, Get, Patch, Query, Param, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ColaboradorService } from '../services/colaborador/colaborador.service';
+import { BuscarColaboradorDto } from '../dtos/colaborador/buscar-colaborador.dto';
+import { AtualizarExportacaoDto } from '../dtos/colaborador/atualizar-exportacao.dto';
+
+@ApiTags('Planos de Saúde - Colaboradores')
+@Controller('planos-saude/colaboradores')
+export class ColaboradorController {
+  constructor(private readonly colaboradorService: ColaboradorService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Buscar colaboradores com filtros' })
+  async buscar(@Query() filtros: BuscarColaboradorDto) {
+    const dados = await this.colaboradorService.buscarColaboradores(filtros);
+    return {
+      success: true,
+      data: dados,
+      total: dados.length
+    };
+  }
+
+  @Patch(':cpf/exportacao')
+  @ApiOperation({ summary: 'Atualizar status de exportação' })
+  async atualizarExportacao(
+    @Param('cpf') cpf: string,
+    @Body() dto: AtualizarExportacaoDto
+  ) {
+    const resultado = await this.colaboradorService.atualizarExportacao(
+      cpf,
+      dto.mes,
+      dto.ano,
+      dto.exporta
+    );
+    return {
+      success: true,
+      message: resultado.mensagem
+    };
+  }
+}
+```
+
+### 5. Service de Banco (Camada de Abstração Mínima)
+
+```typescript
+// src/shared/database/oracle.service.ts
+
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import * as oracledb from 'oracledb';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class OracleService implements OnModuleInit, OnModuleDestroy {
+  private pool: oracledb.Pool;
+
+  constructor(private configService: ConfigService) {}
+
+  async onModuleInit() {
+    this.pool = await oracledb.createPool({
+      user: this.configService.get('ORACLE_USER'),
+      password: this.configService.get('ORACLE_PASSWORD'),
+      connectString: this.configService.get('ORACLE_CONNECT_STRING'),
+      poolMin: 2,
+      poolMax: 10
+    });
+  }
+
+  async onModuleDestroy() {
+    await this.pool.close();
+  }
+
+  /**
+   * Executa uma query SELECT e retorna os resultados tipados.
+   */
+  async query<T>(
+    sql: string,
+    params: Record<string, any> = {}
+  ): Promise<T[]> {
+    const connection = await this.pool.getConnection();
+    try {
+      const result = await connection.execute(sql, params, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      });
+      return result.rows as T[];
+    } finally {
+      await connection.close();
+    }
+  }
+
+  /**
+   * Executa um comando (INSERT, UPDATE, DELETE).
+   */
+  async execute(
+    sql: string,
+    params: Record<string, any> = {}
+  ): Promise<void> {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.execute(sql, params, { autoCommit: true });
+    } finally {
+      await connection.close();
+    }
+  }
+
+  /**
+   * Chama uma stored procedure.
+   */
+  async callProcedure(
+    procedureName: string,
+    params: Record<string, any> = {}
+  ): Promise<void> {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.execute(
+        `BEGIN ${procedureName}(${Object.keys(params).map(k => `:${k}`).join(', ')}); END;`,
+        params,
+        { autoCommit: true }
+      );
+    } finally {
+      await connection.close();
+    }
+  }
+}
+```
+
+### Resultado: Código Transparente
+
+Quando alguém abre o arquivo, vê:
+
+✅ **Repository**: "Ah, só faz SELECT na view"
+✅ **Service**: "Ah, só chama o repository e retorna"
+✅ **Controller**: "Ah, só valida e chama o service"
+✅ **Interfaces**: "Ah, define os tipos do que vem do banco"
+
+**Zero surpresas. Zero lógica escondida. Tudo transparente.**
+
+---
+
+## �📝 Endpoints da API
 
 ### Grupo: Importação
 
@@ -935,7 +1617,7 @@ Request Body:
   "@nestjs/bull": "^10.1.1",
   "class-validator": "^0.14.1",
   "class-transformer": "^0.5.1",
-  "oracledb": "^6.6.0",
+  "oracledb": "^6.6.0",           // Driver nativo Oracle - SEM ORM
   "axios": "^1.7.7",
   "soap": "^1.1.3",
   "multer": "^1.4.5-lts.1",
@@ -950,6 +1632,8 @@ Request Body:
   "rxjs": "^7.8.1"
 }
 ```
+
+**Observação**: Propositalmente NÃO incluímos TypeORM, Prisma ou qualquer ORM. Usamos apenas o driver nativo `oracledb` com TypeScript interfaces para tipos.
 
 ### devDependencies
 
@@ -1159,6 +1843,62 @@ Request Body:
 ---
 
 ## 🔄 Estratégia de Migração
+
+### Princípio: "Tradução Fiel, Não Reimplementação"
+
+**Abordagem:**
+1. Para cada endpoint legacy, criar equivalente 1:1 no NestJS
+2. Manter mesma sequência de chamadas ao banco
+3. Preservar mesmas validações
+4. Usar mesmas procedures e views
+5. Adicionar apenas: logs, documentação, testes
+
+### Matriz de Equivalência: Legacy → Novo
+
+| # | Funcionalidade Legacy | Endpoint PHP | Procedure/View Usado | Novo Endpoint NestJS | Alteração na Lógica? |
+|---|----------------------|--------------|----------------------|---------------------|----------------------|
+| 1 | Importar Unimed CNPJ | `?acao=saveUnimedCnpj` | Inserts em `gc.uni_dados_cobranca` | `POST /planos-saude/importacao/unimed/cnpj` | ❌ Não - mesma lógica |
+| 2 | Importar Unimed Contrato | `?acao=saveUnimedContrato` | Inserts em `gc.uni_dados_cobranca` | `POST /planos-saude/importacao/unimed/contrato` | ❌ Não - mesma lógica |
+| 3 | Importar HapVida CSV | `?acao=leCSV` | Inserts em `nbs.hapvida_plano` | `POST /planos-saude/importacao/hapvida` | ❌ Não - mesma lógica |
+| 4 | Processar Resumo | `?acao=save` | `gc.PKG_UNI_SAUDE.p_uni_resumo` | `POST /planos-saude/importacao/processar-resumo` | ❌ Não - mesma procedure |
+| 5 | Buscar Colaboradores | `?acao=Buscar` | `gc.vw_uni_resumo_colaborador` | `GET /planos-saude/colaboradores` | ❌ Não - mesma view |
+| 6 | Atualizar Exportação (1) | `?acao=update` | UPDATE em `gc.uni_resumo_colaborador` | `PATCH /planos-saude/colaboradores/:cpf/exportacao` | ❌ Não - mesmo UPDATE |
+| 7 | Atualizar Exportação (Todos) | `?acao=updateTodosColaborador` | UPDATE em `gc.uni_resumo_colaborador` | `PATCH /planos-saude/colaboradores/empresa/:id/exportacao` | ❌ Não - mesmo UPDATE |
+| 8 | Atualizar Valor Empresa | `?acao=updateValor` | UPDATE em `nbs.mcw_colaborador` | `PATCH /planos-saude/colaboradores/valor-empresa` | ❌ Não - mesmo UPDATE |
+| 9 | Buscar Processos | `?acao=Buscarprocesso` | `gc.mcw_processo` | `GET /planos-saude/processos` | ❌ Não - mesma query |
+| 10 | Executar Processos | `?acao=Execute` | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar` | ❌ Não - mesma procedure |
+| 11 | Histórico Processo | `?acao=HistoricoProcesso` | `gc.vw_mcw_processo_log` | `GET /planos-saude/processos/:codigo/historico` | ❌ Não - mesma view |
+| 12 | Exportar TOTVS | `?acao=ExUnimed` | `gc.PGK_GLOBAL.P_MCW_FECHA_COMISSAO_GLOBAL` | `POST /planos-saude/processos/executar` | ❌ Não - mesma procedure |
+| 13 | Gerar DIRF | `?acao=unimedDIRF` | Procedure custom | `POST /planos-saude/dirf` | ❌ Não - mesma procedure |
+| 14 | Relatório Colaborador | `?acao=RelatorioColaborador` | Jasper Report | `GET /planos-saude/relatorios/colaborador` | ⚠️ Jasper → PDF novo |
+| 15 | Relatório Empresa | `?acao=RelatorioEmpresaColaborador` | Jasper Report | `GET /planos-saude/relatorios/empresa-colaboradores` | ⚠️ Jasper → PDF novo |
+| 16 | Relatório Pagamento | `?acao=RelatorioPagamento` | Jasper Report | `GET /planos-saude/relatorios/pagamento` | ⚠️ Jasper → PDF novo |
+| 17 | Relatório Não Lançamento | `?acao=RelatorioNaoPagamento` | Jasper Report | `GET /planos-saude/relatorios/nao-lancamento` | ⚠️ Jasper → PDF novo |
+| 18 | Resumo Departamento | `?acao=resumoDept` | Jasper Report | `GET /planos-saude/relatorios/departamento` | ⚠️ Jasper → PDF novo |
+| 19 | Resumo Centro Custo | `?acao=resumoCentroCust` | Jasper Report | `GET /planos-saude/relatorios/centro-custo` | ⚠️ Jasper → PDF novo |
+
+**Legenda:**
+- ❌ **Não** - Lógica 100% preservada, apenas traduzida para TypeScript
+- ⚠️ **Jasper → PDF novo** - Queries permanecem as mesmas, apenas engine de PDF muda
+
+### Compromisso de Compatibilidade
+
+**Garantias:**
+1. ✅ Todos os endpoints legacy terão equivalente 1:1
+2. ✅ Mesmas procedures Oracle serão chamadas
+3. ✅ Mesmas views serão consultadas
+4. ✅ Mesmas validações serão aplicadas
+5. ✅ Mesmos resultados serão obtidos
+
+**Única exceção: Relatórios**
+- Queries Oracle: **permanecem iguais**
+- Engine de geração: Jasper Reports → pdfmake/puppeteer
+- Layout: **mantido o mais próximo possível**
+- Dados: **exatamente os mesmos**
+
+---
+
+## 🔄 Estratégia de Migração (Técnica)
 
 ### Abordagem: Strangler Fig Pattern
 
@@ -1485,6 +2225,36 @@ MAX_FILE_SIZE=10485760  # 10MB
 
 ## ✅ Checklist de Aprovação
 
+### Verificação de Preservação de Lógica
+
+- [ ] **Procedures Oracle**: Nenhuma foi alterada ou recriada
+- [ ] **Views Oracle**: Nenhuma foi modificada
+- [ ] **Tabelas**: Estrutura permanece 100% intacta
+- [ ] **Queries**: Mesmas queries, apenas parametrização melhorada
+- [ ] **Sequência de Operações**: Mantida exatamente como no legacy
+- [ ] **Validações**: Mesmas regras aplicadas
+- [ ] **Cálculos**: Todos continuam no banco (procedures/views)
+
+### Verificação de Equivalência Funcional
+
+- [ ] **Importação Unimed**: Mesmos dados, mesma tabela, mesma lógica
+- [ ] **Importação HapVida**: Mesmo parser CSV, mesma tabela
+- [ ] **Busca Colaboradores**: Mesma view, mesmos filtros
+- [ ] **Atualizar Exportação**: Mesmo UPDATE
+- [ ] **Executar Processos**: Mesmas procedures, mesmos parâmetros
+- [ ] **Relatórios**: Mesmas queries (engine PDF diferente)
+
+### Verificação de Melhorias Aplicadas
+
+- [ ] **Validações de Entrada**: DTOs com class-validator
+- [ ] **Logging**: Winston com logs estruturados
+- [ ] **Tratamento de Erros**: HTTP status codes adequados
+- [ ] **Documentação**: Swagger completo
+- [ ] **Testes**: Unitários e integração implementados
+- [ ] **Type-Safety**: TypeScript em todos os arquivos
+
+### Aprovações
+
 - [ ] Arquitetura revisada e aprovada
 - [ ] Stack tecnológica aprovada
 - [ ] Cronograma validado
@@ -1493,6 +2263,8 @@ MAX_FILE_SIZE=10485760  # 10MB
 - [ ] Equipe alocada
 - [ ] Budget aprovado
 - [ ] Stakeholders alinhados
+- [ ] **DBA confirmou**: Nenhuma alteração no banco será feita
+- [ ] **Product Owner confirmou**: Mesma lógica, apenas modernizada
 
 ---
 
