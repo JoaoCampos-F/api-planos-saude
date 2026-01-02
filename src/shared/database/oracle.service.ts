@@ -31,6 +31,18 @@ export class OracleService implements OnModuleInit, OnModuleDestroy {
     try {
       this.logger.log('Inicializando pool de conexões Oracle...');
 
+      // Habilitar modo Thick para suportar autenticação legada
+      try {
+        // Especificar caminho do Instant Client no Windows
+        const instantClientPath = 'C:\\oracle\\instantclient_21_10';
+        oracledb.initOracleClient({ libDir: instantClientPath });
+        this.logger.log('Modo Thick habilitado (Oracle Instant Client)');
+      } catch (err) {
+        this.logger.warn(
+          `Modo Thick não disponível: ${err.message}. Usando Thin mode.`,
+        );
+      }
+
       const dbConfig = this.configService.get('database.oracle');
 
       this.pool = await oracledb.createPool({
