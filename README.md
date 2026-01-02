@@ -2,6 +2,18 @@
 
 API moderna para gerenciamento de planos de saúde (Unimed e HapVida), desenvolvida em NestJS + TypeScript + Oracle Database.
 
+## 🎯 Status do Projeto
+
+| Fase                             | Status        | Progresso |
+| -------------------------------- | ------------- | --------- |
+| Fase 1 - Infraestrutura Base     | ✅ Concluída  | 100%      |
+| Fase 2 - Módulo de Importação    | ✅ Concluída  | 100%      |
+| Fase 3 - Módulo de Colaboradores | 📋 Próxima    | 0%        |
+| Fase 4 - Módulo de Processos     | 📋 Aguardando | 0%        |
+| Fase 5 - Módulo de Relatórios    | 📋 Aguardando | 0%        |
+
+**Última atualização**: 02/01/2026
+
 ## 📋 Sobre o Projeto
 
 Esta API é uma modernização do módulo "uni" do sistema legado (npd-legacy) em PHP. O projeto mantém **exatamente a mesma lógica de negócio**, alterando apenas a tecnologia utilizada.
@@ -15,23 +27,39 @@ Esta API é uma modernização do módulo "uni" do sistema legado (npd-legacy) e
 - ✅ Zero mudanças nas procedures existentes - apenas chamadas via node-oracledb
 - ✅ Código transparente: qualquer desenvolvedor pode ver que apenas chama o banco
 
-### Funcionalidades Principais
+### Funcionalidades Implementadas
 
-1. **Importação de Dados**
-   - Unimed Cuiabá: Integração via REST API + fallback SOAP
-   - HapVida: Importação via arquivo CSV
+#### ✅ Módulo de Importação (Fase 2)
 
-2. **Gestão de Colaboradores**
+1. **Importação Unimed**
+   - ✅ Integração com API REST da Unimed Cuiabá
+   - ✅ Busca por CNPJ
+   - ✅ Busca por Contrato
+   - ✅ Cache de token de autenticação
+   - ✅ Inserção em lote com transação
+
+2. **Importação HapVida**
+   - ✅ Upload de arquivo CSV
+   - ✅ Parsing e validação de dados
+   - ✅ Conversão de valores monetários e datas
+   - ✅ Inserção em lote com transação
+   - ✅ Relatório de erros por linha
+
+#### 📋 Próximas Funcionalidades (Fase 3)
+
+3. **Gestão de Colaboradores**
    - Listagem com filtros (mês, ano, status, operadora)
    - Atualização de valores e status de exportação
    - Operações em lote
 
-3. **Processos Automatizados**
+#### 📋 Funcionalidades Futuras
+
+4. **Processos Automatizados**
    - Execução de resumo de colaboradores
    - Fechamento de comissões MCW
    - Exportação para TOTVS
 
-4. **Relatórios Gerenciais**
+5. **Relatórios Gerenciais**
    - 6 tipos de relatórios Jasper
    - Exportação em PDF/Excel
    - Histórico de importações

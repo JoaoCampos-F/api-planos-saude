@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './shared/database/database.module';
 import { LoggerModule } from './shared/logger/logger.module';
 import { CacheModule } from './shared/cache/cache.module';
+import { PlanosSaudeModule } from './modules/planos-saude/planos-saude.module';
 import databaseConfig from './config/database.config';
 import integrationsConfig from './config/integrations.config';
 import appConfig from './config/app.config';
@@ -17,6 +18,9 @@ import appConfig from './config/app.config';
  * - DatabaseModule: Conexão com Oracle Database
  * - LoggerModule: Sistema de logging centralizado
  * - CacheModule: Cache em memória
+ *
+ * Módulos de negócio:
+ * - PlanosSaudeModule: Gestão de planos de saúde (Unimed e HapVida)
  */
 @Module({
   imports: [
@@ -33,7 +37,8 @@ import appConfig from './config/app.config';
     LoggerModule,
     CacheModule,
 
-    // Módulos de negócio serão adicionados aqui conforme desenvolvimento
+    // Módulos de negócio
+    PlanosSaudeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

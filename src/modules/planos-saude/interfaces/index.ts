@@ -9,3 +9,7 @@ export * from './colaborador-resumo.interface';
 export * from './unimed-dados-cobranca.interface';
 export * from './hapvida-plano.interface';
 export * from './processo-mcw.interface';
+
+// Interfaces específicas para integração API
+export * from './unimed.interface';
+export * from './hapvida.interface';
