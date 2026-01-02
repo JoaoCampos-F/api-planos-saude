@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import PdfPrinter from 'pdfmake';
+import * as pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 import { LoggerService } from '@/shared/logger/logger.service';
 import {
@@ -10,27 +11,16 @@ import {
   DadosRelatorioCentroCusto,
 } from '../../interfaces/relatorio.interface';
 
+// Configurar fontes do pdfMake
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs;
+
 /**
  * Service para geração de relatórios em PDF
  * Substitui Jasper Reports do legado usando PDFMake
  */
 @Injectable()
 export class RelatorioGeneratorService {
-  private printer: any;
-
-  constructor(private readonly logger: LoggerService) {
-    // Configuração de fontes para PDFMake
-    const fonts = {
-      Roboto: {
-        normal: 'node_modules/pdfmake/build/vfs_fonts.js',
-        bold: 'node_modules/pdfmake/build/vfs_fonts.js',
-        italics: 'node_modules/pdfmake/build/vfs_fonts.js',
-        bolditalics: 'node_modules/pdfmake/build/vfs_fonts.js',
-      },
-    };
-
-    this.printer = new PdfPrinter(fonts);
-  }
+  constructor(private readonly logger: LoggerService) {}
 
   /**
    * Gera PDF e retorna como Buffer
@@ -86,14 +76,14 @@ export class RelatorioGeneratorService {
     }
 
     return new Promise((resolve, reject) => {
-      const pdfDoc = this.printer.createPdfKitDocument(docDefinition);
-      const chunks: Buffer[] = [];
-
-      pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
-      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-      pdfDoc.on('error', reject);
-
-      pdfDoc.end();
+      try {
+        const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+        pdfDocGenerator.getBuffer((buffer: Buffer) => {
+          resolve(buffer);
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 

@@ -18,7 +18,7 @@ import { LoggerService } from '@/shared/logger/logger.service';
  * Substitui os endpoints do UnimedController.php do legado
  */
 @ApiTags('Relatórios')
-@Controller('relatorios')
+@Controller('planos-saude/relatorios')
 export class RelatorioController {
   constructor(
     private readonly relatorioService: RelatorioService,

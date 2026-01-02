@@ -163,11 +163,13 @@ pnpm run format
 ### Environment Configuration
 
 All configs are in [src/config](src/config):
+
 - `app.config.ts` - Port, logging, uploads
 - `database.config.ts` - Oracle connection pools (schemas: gc, nbs)
 - `integrations.config.ts` - External APIs (Unimed REST/SOAP)
 
 Environment variables are loaded via `@nestjs/config` from `.env`:
+
 ```env
 ORACLE_USER=your_user
 ORACLE_PASSWORD=your_pass
@@ -179,6 +181,7 @@ ORACLE_SCHEMA_NBS=nbs
 ### Testing
 
 Tests are configured with Jest. Run:
+
 ```bash
 pnpm test           # Unit tests
 pnpm test:e2e       # E2E tests
@@ -188,10 +191,12 @@ pnpm test:cov       # Coverage report
 ### API Documentation
 
 Swagger is auto-configured at bootstrap ([main.ts](src/main.ts)):
+
 - **Docs**: http://localhost:3000/api/docs
 - **JSON**: http://localhost:3000/api-json
 
 All controllers should use Swagger decorators:
+
 ```typescript
 @ApiTags('Importação')
 @ApiOperation({ summary: 'Importar dados da Unimed' })
@@ -206,21 +211,21 @@ All controllers should use Swagger decorators:
 
 ```typescript
 // Query with results
-await oracleService.query<T>(sql, params)
+await oracleService.query<T>(sql, params);
 
 // Single result or null
-await oracleService.queryOne<T>(sql, params)
+await oracleService.queryOne<T>(sql, params);
 
 // Execute INSERT/UPDATE/DELETE
-await oracleService.execute(sql, params)
+await oracleService.execute(sql, params);
 
 // Call stored procedure
-await oracleService.callProcedure(name, params, outParams)
+await oracleService.callProcedure(name, params, outParams);
 
 // Execute in transaction
 await oracleService.executeTransaction(async (connection) => {
   // Multiple operations
-})
+});
 ```
 
 ### LoggerService ([src/shared/logger/logger.service.ts](src/shared/logger/logger.service.ts))
@@ -256,6 +261,7 @@ this.logger.debug('Detailed info for debugging');
 ## ESLint Rules
 
 Modern flat config ([eslint.config.mjs](eslint.config.mjs)):
+
 - TypeScript + Prettier integration
 - `@typescript-eslint/no-explicit-any`: off (Oracle results are untyped)
 - `prettier/prettier`: enforced with `endOfLine: auto` for cross-platform
@@ -263,6 +269,7 @@ Modern flat config ([eslint.config.mjs](eslint.config.mjs)):
 ## TypeScript Configuration
 
 [tsconfig.json](tsconfig.json) uses Node.js ESM features:
+
 - `"module": "nodenext"` and `"moduleResolution": "nodenext"`
 - `"noImplicitAny": false` (Oracle dynamic results)
 - Decorators enabled for NestJS
@@ -285,6 +292,7 @@ Modern flat config ([eslint.config.mjs](eslint.config.mjs)):
 ## Next Steps for AI Agents
 
 When adding new features:
+
 1. Check if stored procedure exists in Oracle first
 2. Create DTO in `dtos/` with validation and Swagger decorators
 3. Add method in Service that calls OracleService

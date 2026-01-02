@@ -9,7 +9,7 @@ import { LoggerService } from '@/shared/logger/logger.service';
  * Fornece listas para uso em outros módulos e frontend
  */
 @ApiTags('Utilitários')
-@Controller('utilidades')
+@Controller('planos-saude/utilidades')
 export class EmpresaController {
   constructor(
     private readonly empresaService: EmpresaService,
